@@ -13,6 +13,8 @@ Wormhole is a multisig bridge with 19 "guardian" validators that watch blocks on
 
 
 Run with
+``` use azure vm, use node 16 ```
+
 ```sh
 git clone https://github.com/algorand-devrel/wormhole-demo 
 cd wormhole-demo
@@ -48,4 +50,4 @@ ContractTransfer/Redeem w/ !Algorand chains
 - [x] Solana
 - [x] Avalanche
 
-
+// ABUILD49, QuickNode API Credits

@@ -10,30 +10,39 @@ import {
 } from "./wormhole/wormhole";
 import { WORMHOLE_RPC_HOSTS } from "./wormhole/consts";
 import { initChain, ChainConfigs } from "./wormhole/helpers";
+import { getAlgoConnection, getAlgoSigner } from "./wormhole/helpers"
+
 
 (async function () {
-  //await roundTripAsset(BigInt(0), BigInt(100), "algorand", "solana");
-  //await roundTripAsset(BigInt(0), BigInt(100), "algorand", "avalanche");
-
-  // send Algorand(WETH, id 90650110) to Ethereum(WETH, id 0xc778417E063141139Fce010982780140Aa0cD5Ab)
-  // await oneWayTripAssetTransfer(BigInt(90650110), BigInt(1), "algorand", "ethereum");
-  // send Ethereum(WETH, id 0xc778417E063141139Fce010982780140Aa0cD5Ab) to Algorand(WETH, id 90650110)
-  await oneWayTripAssetTransfer("0xc778417E063141139Fce010982780140Aa0cD5Ab", BigInt(1), "ethereum", "algorand");
-  // await contractTransfer(
-  //   BigInt(0), // Asset Id / Contract
-  //   BigInt(100),  // Amount
-  //   BigInt(89737126), // App Id / Contract to call
-  //   "algorand", // From chain
-  //   "algorand", // To chain
-  //   new Uint8Array(Buffer.from("Testing123")) // Payload to pass to the receiving contract 
-  // );
+  let client = getAlgoConnection();
+  let acct = getAlgoSigner().getAddress();
+  let transfer_amt = 0;
+  (async () => {
+    let acct_info = (await client.accountInformation(acct).do());
+    acct_info.assets.forEach((element: any) => {
+      if (element['asset-id'] == 90650110) {
+        transfer_amt = element['amount'];
+        if (transfer_amt > 1000) {
+          console.log(transfer_amt);
+          transfer_amt /= 2;
+          // send Algorand(WETH, id 90650110) to Ethereum(WETH, id 0xc778417E063141139Fce010982780140Aa0cD5Ab)
+          // 0.00000001 WETH
+          oneWayTripAssetTransfer(BigInt(90650110), BigInt(transfer_amt), "algorand", "ethereum", false); // ! true doesnt work
+          return;
+        }
+      }
+    });
+  })().catch(e => {
+    console.log(e);
+  })
 })();
 
 async function oneWayTripAssetTransfer(
   asset: string | bigint,
   amount: bigint,
   origin: string,
-  destination: string
+  destination: string,
+  reverse_it: boolean
 ) {
   console.log('asset', asset, 'amount', amount, 'origin', origin, 'destination', destination);
 
@@ -61,31 +70,36 @@ async function oneWayTripAssetTransfer(
     amount: amount,
   };
 
-  // Send it
-  console.log(`Sending transfer from ${origin} to ${destination}`);
-  console.time("xfer");
-  await wh.perform({
-    action: WormholeActionType.AssetTransfer,
-    assetTransfer: xfer,
-  });
-  console.timeEnd("xfer");
-  // // Prepare the opposite transfer
-  // const xferBack: WormholeAssetTransfer = {
-  //   origin: xfer.destination,
-  //   sender: xfer.receiver,
-  //   destination: xfer.origin,
-  //   receiver: xfer.sender,
-  //   amount: amount,
-  // };
 
-  // // Send it
-  // console.log(`Sending transfer from ${destination} to ${origin}`);
-  // console.time("xferBack");
-  // await wh.perform({
-  //   action: WormholeActionType.AssetTransfer,
-  //   assetTransfer: xferBack,
-  // });
-  // console.timeEnd("xferBack");
+  if (!reverse_it) {
+    // Send it
+    console.log(`Sending transfer from ${origin} to ${destination}`);
+    console.time("xfer");
+    await wh.perform({
+      action: WormholeActionType.AssetTransfer,
+      assetTransfer: xfer,
+    });
+    console.timeEnd("xfer");
+
+  } else {
+    // Prepare the opposite transfer
+    const xferBack: WormholeAssetTransfer = {
+      origin: xfer.destination,
+      sender: xfer.receiver,
+      destination: xfer.origin,
+      receiver: xfer.sender,
+      amount: amount,
+    };
+
+    // Send it
+    console.log(`Sending transfer from ${destination} to ${origin}`);
+    console.time("xferBack");
+    await wh.perform({
+      action: WormholeActionType.AssetTransfer,
+      assetTransfer: xferBack,
+    });
+    console.timeEnd("xferBack");
+  }
 }
 
 async function roundTripAsset(
