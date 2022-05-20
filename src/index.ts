@@ -14,17 +14,79 @@ import { initChain, ChainConfigs } from "./wormhole/helpers";
 (async function () {
   //await roundTripAsset(BigInt(0), BigInt(100), "algorand", "solana");
   //await roundTripAsset(BigInt(0), BigInt(100), "algorand", "avalanche");
-  //await roundTripAsset(BigInt(0), BigInt(100), "algorand", "ethereum");
 
-  await contractTransfer(
-    BigInt(0), // Asset Id / Contract
-    BigInt(100),  // Amount
-    BigInt(89737126), // App Id / Contract to call
-    "algorand", // From chain
-    "algorand", // To chain
-    new Uint8Array(Buffer.from("Testing123")) // Payload to pass to the receiving contract 
-  );
+  // send Algorand(WETH, id 90650110) to Ethereum(WETH, id 0xc778417E063141139Fce010982780140Aa0cD5Ab)
+  // await oneWayTripAssetTransfer(BigInt(90650110), BigInt(1), "algorand", "ethereum");
+  // send Ethereum(WETH, id 0xc778417E063141139Fce010982780140Aa0cD5Ab) to Algorand(WETH, id 90650110)
+  await oneWayTripAssetTransfer("0xc778417E063141139Fce010982780140Aa0cD5Ab", BigInt(1), "ethereum", "algorand");
+  // await contractTransfer(
+  //   BigInt(0), // Asset Id / Contract
+  //   BigInt(100),  // Amount
+  //   BigInt(89737126), // App Id / Contract to call
+  //   "algorand", // From chain
+  //   "algorand", // To chain
+  //   new Uint8Array(Buffer.from("Testing123")) // Payload to pass to the receiving contract 
+  // );
 })();
+
+async function oneWayTripAssetTransfer(
+  asset: string | bigint,
+  amount: bigint,
+  origin: string,
+  destination: string
+) {
+  console.log('asset', asset, 'amount', amount, 'origin', origin, 'destination', destination);
+
+  const [originChain, originSigner] = initChain(ChainConfigs[origin]);
+  const [destChain, destSigner] = initChain(ChainConfigs[destination]);
+  console.log('signers complete');
+
+  // Main wh interface, allows for {mirror, transfer, and attest, receive, getVaa}
+  const wh = new Wormhole(WORMHOLE_RPC_HOSTS);
+  console.log('wormhole complete');
+
+  // Get the destination asset
+  const originAsset: WormholeAsset = { chain: originChain, contract: asset };
+  const destAsset = await wh.getMirrored(originAsset, destChain);
+  console.log('asset creation complete');
+  console.log('origin asset', originAsset, 'dest asset', destAsset);
+
+
+  // Prepare the transfer
+  const xfer: WormholeAssetTransfer = {
+    origin: originAsset,
+    sender: originSigner,
+    destination: destAsset,
+    receiver: destSigner,
+    amount: amount,
+  };
+
+  // Send it
+  console.log(`Sending transfer from ${origin} to ${destination}`);
+  console.time("xfer");
+  await wh.perform({
+    action: WormholeActionType.AssetTransfer,
+    assetTransfer: xfer,
+  });
+  console.timeEnd("xfer");
+  // // Prepare the opposite transfer
+  // const xferBack: WormholeAssetTransfer = {
+  //   origin: xfer.destination,
+  //   sender: xfer.receiver,
+  //   destination: xfer.origin,
+  //   receiver: xfer.sender,
+  //   amount: amount,
+  // };
+
+  // // Send it
+  // console.log(`Sending transfer from ${destination} to ${origin}`);
+  // console.time("xferBack");
+  // await wh.perform({
+  //   action: WormholeActionType.AssetTransfer,
+  //   assetTransfer: xferBack,
+  // });
+  // console.timeEnd("xferBack");
+}
 
 async function roundTripAsset(
   asset: string | bigint,
