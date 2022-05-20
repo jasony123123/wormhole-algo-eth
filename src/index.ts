@@ -11,7 +11,8 @@ import {
 import { WORMHOLE_RPC_HOSTS } from "./wormhole/consts";
 import { initChain, ChainConfigs } from "./wormhole/helpers";
 import { getAlgoConnection, getAlgoSigner } from "./wormhole/helpers"
-
+import { getEthConnection, getEthSigner } from "./wormhole/helpers"
+import { ethers } from "ethers";
 
 (async function () {
   let client = getAlgoConnection();
@@ -24,10 +25,30 @@ import { getAlgoConnection, getAlgoSigner } from "./wormhole/helpers"
         transfer_amt = element['amount'];
         if (transfer_amt > 1000) {
           console.log(transfer_amt);
-          transfer_amt /= 2;
+          transfer_amt /= 10;
           // send Algorand(WETH, id 90650110) to Ethereum(WETH, id 0xc778417E063141139Fce010982780140Aa0cD5Ab)
           // 0.00000001 WETH
-          oneWayTripAssetTransfer(BigInt(90650110), BigInt(transfer_amt), "algorand", "ethereum", false); // ! true doesnt work
+          // oneWayTripAssetTransfer(BigInt(90650110), BigInt(transfer_amt), "algorand", "ethereum", false); // ! true doesnt work
+          // unwrap eth
+          const abi = JSON.stringify([{
+            "constant": false,
+            "inputs": [
+              {
+                "name": "wad",
+                "type": "uint256"
+              }
+            ],
+            "name": "withdraw",
+            "outputs": [
+            ],
+            "payable": false,
+            "stateMutability": "nonpayable",
+            "type": "function"
+          }]);
+          const address = "0xc778417E063141139Fce010982780140Aa0cD5Ab";
+          const signer = getEthSigner(getEthConnection());
+          const erc20_rw = new ethers.Contract(address, abi, signer);
+          erc20_rw.withdraw(100)
           return;
         }
       }
