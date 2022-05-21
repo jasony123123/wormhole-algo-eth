@@ -1,3 +1,20 @@
+# Usage
+
+**Setup**
+
+- clone repo. `git clone https://github.com/jasony123123/wormhole-algo-eth.git`
+- install node. `sudo apt install curl`, `curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash`, `source ~/.profile`, `nvm install 16`.
+
+**Use**
+
+- set enviornment variables. `export ALGORAND_SEEDPHRASE="word word ..."`, `export ETH_PRIVATE_KEY="0x..."`.
+- set run parameters. inside `src/index.ts`, `ALGORAND_WETH_AMNT_THRESHOLD = 123...`, `TESTING = true/false`, `TIME_PERIOD = 5`.
+- run `npm run bridger`. every `$TIME_PERIOD` minutes, code will run to check the algorand wallet at `$ALGORAND_SEEDPHRASE` and if the amount of WETH exceeds `$ALGORAND_WETH_AMNT_THRESHOLD`, the code will bridge over all (or 10% if `$TESTING` is true) of the WETH to the ethereum wallet at `$ETH_PRIVATE_KEY` as WETH.
+
+Example ropsten / algorand testnet:
+- `ALGORAND_SEEDPHRASE="tenant helmet motor sauce appear buddy gloom park average glory course wire buyer ostrich history time refuse room blame oxygen film diamond confirm ability spirit"`
+- `ETH_PRIVATE_KEY="0x3f493e59e81db1be4ebbe18b28ba8fdd066ef44139420ead59f37f5dacb80719"`
+
 Demo prep for wormhole hackathon (https://www.activate.build/miami)
 
 [Github](https://github.com/certusone/wormhole)

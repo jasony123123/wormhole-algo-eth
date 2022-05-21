@@ -85,9 +85,16 @@ export function getTerraConnection(): LCDClient {
 
 // Plz dont steal all my testnet money
 
+declare var process: {
+  env: {
+    ALGORAND_SEEDPHRASE: string,
+    ETH_PRIVATE_KEY: string
+  }
+}
+
+
 export function getAlgoSigner(): AlgorandSigner {
-  const mn =
-    "tenant helmet motor sauce appear buddy gloom park average glory course wire buyer ostrich history time refuse room blame oxygen film diamond confirm ability spirit";
+  const mn = process.env.ALGORAND_SEEDPHRASE;
   return new AlgorandSigner(mnemonicToSecretKey(mn));
 }
 
@@ -98,9 +105,7 @@ export function getSolSigner(): SolanaSigner {
 }
 
 export function getEthSigner(provider: any): EthereumSigner {
-  const ETH_PRIVATE_KEY =
-    "0x3f493e59e81db1be4ebbe18b28ba8fdd066ef44139420ead59f37f5dacb80719";
-  return new ethers.Wallet(ETH_PRIVATE_KEY, provider);
+  return new ethers.Wallet(process.env.ETH_PRIVATE_KEY, provider);
 }
 
 export function getAvaxSigner(provider: any): EthereumSigner {

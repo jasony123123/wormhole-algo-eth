@@ -10,53 +10,42 @@ import {
 } from "./wormhole/wormhole";
 import { WORMHOLE_RPC_HOSTS } from "./wormhole/consts";
 import { initChain, ChainConfigs } from "./wormhole/helpers";
-import { getAlgoConnection, getAlgoSigner } from "./wormhole/helpers"
-import { getEthConnection, getEthSigner } from "./wormhole/helpers"
-import { ethers } from "ethers";
+import { getAlgoConnection, getAlgoSigner } from "./wormhole/helpers";
 
-(async function () {
-  let client = getAlgoConnection();
-  let acct = getAlgoSigner().getAddress();
-  let transfer_amt = 0;
-  (async () => {
-    let acct_info = (await client.accountInformation(acct).do());
-    acct_info.assets.forEach((element: any) => {
-      if (element['asset-id'] == 90650110) {
-        transfer_amt = element['amount'];
-        if (transfer_amt > 1000) {
-          console.log(transfer_amt);
-          transfer_amt /= 10;
-          // send Algorand(WETH, id 90650110) to Ethereum(WETH, id 0xc778417E063141139Fce010982780140Aa0cD5Ab)
-          // 0.00000001 WETH
-          // oneWayTripAssetTransfer(BigInt(90650110), BigInt(transfer_amt), "algorand", "ethereum", false); // ! true doesnt work
-          // unwrap eth
-          const abi = JSON.stringify([{
-            "constant": false,
-            "inputs": [
-              {
-                "name": "wad",
-                "type": "uint256"
-              }
-            ],
-            "name": "withdraw",
-            "outputs": [
-            ],
-            "payable": false,
-            "stateMutability": "nonpayable",
-            "type": "function"
-          }]);
-          const address = "0xc778417E063141139Fce010982780140Aa0cD5Ab";
-          const signer = getEthSigner(getEthConnection());
-          const erc20_rw = new ethers.Contract(address, abi, signer);
-          erc20_rw.withdraw(100)
-          return;
+// modify these
+const ALGORAND_WETH_AMNT_THRESHOLD = 1 * 1e8; // ALGORAND_WETH_AMNT_THRESHOLD, units of * 0.00000001 WETH !!!
+const TESTING = true;
+const TIME_PERIOD = 5; // in minutes
+
+const ALGORAND_WETH_ID = 90650110; // on ethereum-ropsten, WETH has address 0xc778417E063141139Fce010982780140Aa0cD5Ab
+
+var minutes = TIME_PERIOD, the_interval = minutes * 60 * 1000;
+setInterval(function () {
+  console.log("------- anotha one -------");
+  (async function () {
+    let client = getAlgoConnection();
+    let acct = getAlgoSigner().getAddress();
+    console.log('algorand account', acct);
+    let transfer_amt = 0;
+    (async () => {
+      let acct_info = (await client.accountInformation(acct).do());
+      acct_info.assets.forEach((element: any) => {
+        if (element['asset-id'] == ALGORAND_WETH_ID) {
+          transfer_amt = element['amount'];
+          console.log('algorand WETH amt & threshold', transfer_amt, ALGORAND_WETH_AMNT_THRESHOLD);
+          if (transfer_amt >= ALGORAND_WETH_AMNT_THRESHOLD) {
+            if (TESTING)
+              transfer_amt = Math.floor(transfer_amt / 10); // testing only !!!
+            oneWayTripAssetTransfer(BigInt(ALGORAND_WETH_ID), BigInt(transfer_amt), "algorand", "ethereum", false); // true doesnt work
+            return;
+          }
         }
-      }
-    });
-  })().catch(e => {
-    console.log(e);
-  })
-})();
+      });
+    })().catch(e => {
+      console.log(e);
+    })
+  })();
+}, the_interval);
 
 async function oneWayTripAssetTransfer(
   asset: string | bigint,
