@@ -13,9 +13,9 @@ import { initChain, ChainConfigs } from "./wormhole/helpers";
 import { getAlgoConnection, getAlgoSigner } from "./wormhole/helpers";
 
 // modify these
-const ALGORAND_WETH_AMNT_THRESHOLD = 1 * 1e8; // ALGORAND_WETH_AMNT_THRESHOLD, units of * 0.00000001 WETH !!!
+const ALGORAND_WETH_AMNT_THRESHOLD = 100; // units of * 0.00000001 WETH
 const TESTING = true;
-const TIME_PERIOD = 5; // in minutes
+const TIME_PERIOD = 2.5; // in minutes
 
 const ALGORAND_WETH_ID = 90650110; // on ethereum-ropsten, WETH has address 0xc778417E063141139Fce010982780140Aa0cD5Ab
 
@@ -35,7 +35,7 @@ setInterval(function () {
           console.log('algorand WETH amt & threshold', transfer_amt, ALGORAND_WETH_AMNT_THRESHOLD);
           if (transfer_amt >= ALGORAND_WETH_AMNT_THRESHOLD) {
             if (TESTING)
-              transfer_amt = Math.floor(transfer_amt / 10); // testing only !!!
+              transfer_amt = Math.floor(transfer_amt / 10);
             oneWayTripAssetTransfer(BigInt(ALGORAND_WETH_ID), BigInt(transfer_amt), "algorand", "ethereum", false); // true doesnt work
             return;
           }
