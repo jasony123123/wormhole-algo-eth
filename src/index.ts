@@ -16,11 +16,12 @@ import { bigIntToBytes } from "algosdk";
 
 // modify these
 const ALGORAND_WETH_AMNT_THRESHOLD = 1; // units of * 0.00000001 WETH
-const TESTING = true;
+const TESTING = false;
 const STAKING_CONTRACT_ADDRESS = "0x88b9E8a6211466aF42B1D92402d4075dE6cf2ffe";
 const STAKING_CONTRACT_ABI = require('./abi.json');
 const ALGO_DWETH_ID = 91208285; // all ALGO wallets MUST opt into these.
 const ALGO_STETHLP_ID = 91208322;
+const RESET_IT_ALL = false;
 
 // constants
 const ALGO_TO_ETH_SCALING = "0000000000"; // bc algorand is in 1e-8 and eth is in 1e-18
@@ -59,23 +60,48 @@ const algoClawAndReissue = async () => {
           let confirmedTxn = await algosdk.waitForConfirmation(algoClient, tx.txId, 2);
           console.log("Transaction " + tx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
         })();
-        // redistribute
-        (async () => {
-          let params = await algoClient.getTransactionParams().do();
-          let txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-            amount: BigInt(amnt),
-            assetIndex: ALGO_STETHLP_ID,
-            from: algoManagerAcct.addr,
-            suggestedParams: params,
-            to: element["address"],
-          });
-          let rawSignedTxn = txn.signTxn(algoManagerAcct.sk)
-          let tx = (await algoClient.sendRawTransaction(rawSignedTxn).do());
-          let confirmedTxn = await algosdk.waitForConfirmation(algoClient, tx.txId, 2);
-          console.log("Transaction " + tx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
-        })();
+        if (!RESET_IT_ALL) {
+          // redistribute
+          (async () => {
+            let params = await algoClient.getTransactionParams().do();
+            let txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+              amount: BigInt(amnt),
+              assetIndex: ALGO_STETHLP_ID,
+              from: algoManagerAcct.addr,
+              suggestedParams: params,
+              to: element["address"],
+            });
+            let rawSignedTxn = txn.signTxn(algoManagerAcct.sk)
+            let tx = (await algoClient.sendRawTransaction(rawSignedTxn).do());
+            let confirmedTxn = await algosdk.waitForConfirmation(algoClient, tx.txId, 2);
+            console.log("Transaction " + tx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+          })();
+        }
       }
     });
+    if (RESET_IT_ALL) {
+      stethlpBalances["balances"].forEach((element: any) => {
+        let amnt = element["amount"].toString();
+        if (element["address"] != algoManagerAcct.addr && amnt != "0") {
+          // claw back
+          (async () => {
+            let params = await algoClient.getTransactionParams().do();
+            let txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+              amount: BigInt(amnt),
+              assetIndex: ALGO_STETHLP_ID,
+              from: algoManagerAcct.addr,
+              revocationTarget: element["address"],
+              suggestedParams: params,
+              to: algoManagerAcct.addr,
+            });
+            let rawSignedTxn = txn.signTxn(algoManagerAcct.sk)
+            let tx = (await algoClient.sendRawTransaction(rawSignedTxn).do());
+            let confirmedTxn = await algosdk.waitForConfirmation(algoClient, tx.txId, 2);
+            console.log("Transaction " + tx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+          })();
+        }
+      });
+    }
   })().catch(e => {
     console.log(e);
     console.trace();
@@ -126,8 +152,7 @@ const checkAndBridge = async () => {
   })
 }
 
-// checkAndBridge();
-algoClawAndReissue();
+checkAndBridge();
 
 async function oneWayTripAssetTransfer(
   asset: string | bigint,
