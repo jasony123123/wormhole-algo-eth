@@ -12,27 +12,28 @@ import { WORMHOLE_RPC_HOSTS, ALGORAND_INDEXER_HOST } from "./wormhole/consts";
 import { initChain, ChainConfigs, getEthSigner, getEthConnection } from "./wormhole/helpers";
 import { getAlgoConnection, getAlgoSigner } from "./wormhole/helpers";
 import { ethers } from "ethers";
+import { bigIntToBytes } from "algosdk";
 
 // modify these
 const ALGORAND_WETH_AMNT_THRESHOLD = 1; // units of * 0.00000001 WETH
 const TESTING = true;
 const STAKING_CONTRACT_ADDRESS = "0x88b9E8a6211466aF42B1D92402d4075dE6cf2ffe";
 const STAKING_CONTRACT_ABI = require('./abi.json');
-const ALGO_DWETH_ID = 91205826; // all ALGO wallets MUST opt into these.
-const ALGO_STETHLP_ID = 91205838;
+const ALGO_DWETH_ID = 91208285; // all ALGO wallets MUST opt into these.
+const ALGO_STETHLP_ID = 91208322;
 
 // constants
 const ALGO_TO_ETH_SCALING = "0000000000"; // bc algorand is in 1e-8 and eth is in 1e-18
 const ALGORAND_WETH_ID = 90650110; // on ethereum-ropsten, WETH has address 0xc778417E063141139Fce010982780140Aa0cD5Ab
 const TESTING_SCALE_DOWN = 100;
 
-const algoClawAndReissue = () => {
+const algoClawAndReissue = async () => {
   const algosdk = require('algosdk');
   let algoClient = getAlgoConnection();
   let algoManagerAcct = getAlgoSigner().account;
   const { algodToken, algodServer, algodPort } = ALGORAND_INDEXER_HOST;
   let algoIndexer = new algosdk.Indexer(algodToken, algodServer, algodPort);
-  (async () => {
+  await (async () => {
     console.log('manager addr', algoManagerAcct.addr);
     let dwethBalances = await algoIndexer.lookupAssetBalances(ALGO_DWETH_ID).do();
     let stethlpBalances = await algoIndexer.lookupAssetBalances(ALGO_STETHLP_ID).do();
@@ -40,12 +41,13 @@ const algoClawAndReissue = () => {
     console.log("Information for Asset stEthLp: " + JSON.stringify(stethlpBalances, undefined, 2));
 
     dwethBalances["balances"].forEach((element: any) => {
-      if (false && element["address"] != algoManagerAcct.addr && element["amount"] > 0) {
+      let amnt = element["amount"].toString();
+      if (element["address"] != algoManagerAcct.addr && amnt != "0") {
         // claw back
         (async () => {
           let params = await algoClient.getTransactionParams().do();
           let txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-            amount: element["amount"],
+            amount: BigInt(amnt),
             assetIndex: ALGO_DWETH_ID,
             from: algoManagerAcct.addr,
             revocationTarget: element["address"],
@@ -55,13 +57,13 @@ const algoClawAndReissue = () => {
           let rawSignedTxn = txn.signTxn(algoManagerAcct.sk)
           let tx = (await algoClient.sendRawTransaction(rawSignedTxn).do());
           let confirmedTxn = await algosdk.waitForConfirmation(algoClient, tx.txId, 2);
-          console.log("Transaction " + txn + " confirmed in round " + confirmedTxn["confirmed-round"]);
+          console.log("Transaction " + tx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
         })();
         // redistribute
         (async () => {
           let params = await algoClient.getTransactionParams().do();
           let txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-            amount: element["amount"],
+            amount: BigInt(amnt),
             assetIndex: ALGO_STETHLP_ID,
             from: algoManagerAcct.addr,
             suggestedParams: params,
@@ -70,21 +72,18 @@ const algoClawAndReissue = () => {
           let rawSignedTxn = txn.signTxn(algoManagerAcct.sk)
           let tx = (await algoClient.sendRawTransaction(rawSignedTxn).do());
           let confirmedTxn = await algosdk.waitForConfirmation(algoClient, tx.txId, 2);
-          console.log("Transaction " + txn + " confirmed in round " + confirmedTxn["confirmed-round"]);
+          console.log("Transaction " + tx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
         })();
       }
     });
   })().catch(e => {
     console.log(e);
     console.trace();
-  }).finally(() => {
-    (async () => {
-      let dwethBalances = await algoIndexer.lookupAssetBalances(ALGO_DWETH_ID).do();
-      let stethlpBalances = await algoIndexer.lookupAssetBalances(ALGO_STETHLP_ID).do();
-      console.log("Information for Asset dwEth: " + JSON.stringify(dwethBalances, undefined, 2));
-      console.log("Information for Asset stEthLp: " + JSON.stringify(stethlpBalances, undefined, 2));
-    })();
   });
+  let dwethBalances = await algoIndexer.lookupAssetBalances(ALGO_DWETH_ID).do();
+  let stethlpBalances = await algoIndexer.lookupAssetBalances(ALGO_STETHLP_ID).do();
+  console.log("Information for Asset dwEth: " + JSON.stringify(dwethBalances, undefined, 2));
+  console.log("Information for Asset stEthLp: " + JSON.stringify(stethlpBalances, undefined, 2));
 }
 
 const ethStaking = async (amt: string) => {
