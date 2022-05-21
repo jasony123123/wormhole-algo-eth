@@ -7,13 +7,10 @@
 
 **Use**
 
-- set enviornment variables. `export ALGORAND_SEEDPHRASE="word word ..."`, `export ETH_PRIVATE_KEY="0x..."`.
-- set run parameters. inside `src/index.ts`, `ALGORAND_WETH_AMNT_THRESHOLD = 123...`, `TESTING = true/false`, `TIME_PERIOD = 5`.
-- run `npm run bridger`. every `$TIME_PERIOD` minutes, code will run to check the algorand wallet at `$ALGORAND_SEEDPHRASE` and if the amount of WETH exceeds `$ALGORAND_WETH_AMNT_THRESHOLD`, the code will bridge over all (or 10% if `$TESTING` is true) of the WETH to the ethereum wallet at `$ETH_PRIVATE_KEY` as WETH.
-
-Example ropsten / algorand testnet:
-- `ALGORAND_SEEDPHRASE="tenant helmet motor sauce appear buddy gloom park average glory course wire buyer ostrich history time refuse room blame oxygen film diamond confirm ability spirit"`
-- `ETH_PRIVATE_KEY="0x3f493e59e81db1be4ebbe18b28ba8fdd066ef44139420ead59f37f5dacb80719"`
+- set enviornment variables. `export ALGORAND_SEEDPHRASE="word word ..."`. Must have WETH enabled (id 90650110), and some ALGO
+- eth env variable `export ETH_PRIVATE_KEY="0x..."`. must have some eth. Must use this wallet and goto [here](https://ropsten.etherscan.io/token/0xc778417e063141139fce010982780140aa0cd5ab#writeContract) and hit `approve` with the staking contract address (0x88b9E8a6211466aF42B1D92402d4075dE6cf2ffe) and wad (115792089237316195423570985008687907853269984665640564039457584007913129639935).
+- set run parameters. inside `src/index.ts`, `ALGORAND_WETH_AMNT_THRESHOLD = 123...`, `TESTING = true/false`. make sure `STAKING_CONTRACT_ADDRESS` and `STAKING_CONTRACT_ABI` are ok.
+- run `npm run bridger`
 
 Demo prep for wormhole hackathon (https://www.activate.build/miami)
 

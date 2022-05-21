@@ -9,50 +9,68 @@ import {
   WormholeContractTransfer,
 } from "./wormhole/wormhole";
 import { WORMHOLE_RPC_HOSTS } from "./wormhole/consts";
-import { initChain, ChainConfigs } from "./wormhole/helpers";
+import { initChain, ChainConfigs, getEthSigner, getEthConnection } from "./wormhole/helpers";
 import { getAlgoConnection, getAlgoSigner } from "./wormhole/helpers";
+import { ethers } from "ethers";
 
 // modify these
 const ALGORAND_WETH_AMNT_THRESHOLD = 100; // units of * 0.00000001 WETH
+const STAKING_CONTRACT_ADDRESS = "0x88b9E8a6211466aF42B1D92402d4075dE6cf2ffe";
+const STAKING_CONTRACT_ABI = require('./abi.json');
 const TESTING = true;
-const TIME_PERIOD = 2.5; // in minutes
 
+// constants
+const ALGO_TO_ETH_SCALING = 1e10; // bc algorand is in 1e-8 and eth is in 1e-18
 const ALGORAND_WETH_ID = 90650110; // on ethereum-ropsten, WETH has address 0xc778417E063141139Fce010982780140Aa0cD5Ab
 
-var minutes = TIME_PERIOD, the_interval = minutes * 60 * 1000;
-setInterval(function () {
+const ethStaking = async (amt: number) => {
+  console.log('staking eth');
+  const provider = getEthConnection();
+  const signer = getEthSigner(provider);
+  const contract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, signer);
+  const txCall = await contract.transferAndStakeWrappedEth(amt);
+  console.log(txCall);
+}
+
+const checkAndBridge = async () => {
   console.log("------- anotha one -------");
-  (async function () {
-    let client = getAlgoConnection();
-    let acct = getAlgoSigner().getAddress();
-    console.log('algorand account', acct);
-    let transfer_amt = 0;
-    (async () => {
-      let acct_info = (await client.accountInformation(acct).do());
-      acct_info.assets.forEach((element: any) => {
-        if (element['asset-id'] == ALGORAND_WETH_ID) {
-          transfer_amt = element['amount'];
-          console.log('algorand WETH amt & threshold', transfer_amt, ALGORAND_WETH_AMNT_THRESHOLD);
-          if (transfer_amt >= ALGORAND_WETH_AMNT_THRESHOLD) {
-            if (TESTING)
-              transfer_amt = Math.floor(transfer_amt / 10);
-            oneWayTripAssetTransfer(BigInt(ALGORAND_WETH_ID), BigInt(transfer_amt), "algorand", "ethereum", false); // true doesnt work
-            return;
+  let algoClient = getAlgoConnection();
+  let algoAcct = getAlgoSigner().getAddress();
+  console.log('algorand account', algoAcct);
+  let transfer_amt = 0;
+  (async () => {
+    let acct_info = (await algoClient.accountInformation(algoAcct).do());
+    acct_info.assets.forEach((element: any) => {
+      if (element['asset-id'] == ALGORAND_WETH_ID) {
+        transfer_amt = element['amount'];
+        console.log('algorand acct WETH amt & threshold', transfer_amt, ALGORAND_WETH_AMNT_THRESHOLD);
+        if (transfer_amt >= ALGORAND_WETH_AMNT_THRESHOLD) {
+          if (TESTING) {
+            transfer_amt = Math.floor(transfer_amt / 10);
+            console.log("reduction for testing");
           }
+          oneWayTripAssetTransfer(BigInt(ALGORAND_WETH_ID), BigInt(transfer_amt), "algorand", "ethereum", false, ethStaking, transfer_amt * ALGO_TO_ETH_SCALING); // true doesnt work
+          return;
+        } else {
+          console.log("no bridge - not enough");
         }
-      });
-    })().catch(e => {
-      console.log(e);
-    })
-  })();
-}, the_interval);
+      }
+    });
+  })().catch(e => {
+    console.log('error', e);
+  })
+}
+
+checkAndBridge();
 
 async function oneWayTripAssetTransfer(
   asset: string | bigint,
   amount: bigint,
   origin: string,
   destination: string,
-  reverse_it: boolean
+  reverse_it: boolean,
+  callback: (arg0: number) => void,
+  arg0: number,
 ) {
   console.log('asset', asset, 'amount', amount, 'origin', origin, 'destination', destination);
 
@@ -110,6 +128,8 @@ async function oneWayTripAssetTransfer(
     });
     console.timeEnd("xferBack");
   }
+
+  callback(arg0);
 }
 
 async function roundTripAsset(
