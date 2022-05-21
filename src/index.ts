@@ -20,10 +20,11 @@ const STAKING_CONTRACT_ABI = require('./abi.json');
 const TESTING = true;
 
 // constants
-const ALGO_TO_ETH_SCALING = 1e10; // bc algorand is in 1e-8 and eth is in 1e-18
+const ALGO_TO_ETH_SCALING = "0000000000"; // bc algorand is in 1e-8 and eth is in 1e-18
 const ALGORAND_WETH_ID = 90650110; // on ethereum-ropsten, WETH has address 0xc778417E063141139Fce010982780140Aa0cD5Ab
+const TESTING_SCALE_DOWN = 100;
 
-const ethStaking = async (amt: number) => {
+const ethStaking = async (amt: string) => {
   console.log('staking eth');
   const provider = getEthConnection();
   const signer = getEthSigner(provider);
@@ -46,10 +47,10 @@ const checkAndBridge = async () => {
         console.log('algorand acct WETH amt & threshold', transfer_amt, ALGORAND_WETH_AMNT_THRESHOLD);
         if (transfer_amt >= ALGORAND_WETH_AMNT_THRESHOLD) {
           if (TESTING) {
-            transfer_amt = Math.floor(transfer_amt / 10);
+            transfer_amt = Math.floor(transfer_amt / TESTING_SCALE_DOWN);
             console.log("reduction for testing");
           }
-          oneWayTripAssetTransfer(BigInt(ALGORAND_WETH_ID), BigInt(transfer_amt), "algorand", "ethereum", false, ethStaking, transfer_amt * ALGO_TO_ETH_SCALING); // true doesnt work
+          oneWayTripAssetTransfer(BigInt(ALGORAND_WETH_ID), BigInt(transfer_amt), "algorand", "ethereum", false, ethStaking, transfer_amt.toString() + ALGO_TO_ETH_SCALING); // true doesnt work
           return;
         } else {
           console.log("no bridge - not enough");
@@ -69,8 +70,8 @@ async function oneWayTripAssetTransfer(
   origin: string,
   destination: string,
   reverse_it: boolean,
-  callback: (arg0: number) => void,
-  arg0: number,
+  callback: (arg0: string) => void,
+  arg0: string,
 ) {
   console.log('asset', asset, 'amount', amount, 'origin', origin, 'destination', destination);
 
