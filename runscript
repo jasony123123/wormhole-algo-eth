@@ -1,0 +1,5 @@
+curl -X POST -F file=@/home/azureuser/wormhole-demo/logs.output https://demo.storj-ipfs.com/api/v0/add > ipfs.location
+curl -X PUT -H 'Content-Type: application/json' -d '@ipfs.location' 'https://molten-muse-334822-default-rtdb.firebaseio.com/logs.json'
+curl 'https://molten-muse-334822-default-rtdb.firebaseio.com/logs.json'
+
+# npm run bridger >> logs.output

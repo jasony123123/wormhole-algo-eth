@@ -1,0 +1,47 @@
+LOGS BEGIN
+
+> bridger
+> npx ts-node src/index.ts
+
+-------------- 1653202028875 --------------
+Threshold not reached - no bridging will occur.
+
+> bridger
+> npx ts-node src/index.ts
+
+-------------- 1653202120397 --------------
+Threshold not reached - no bridging will occur.
+
+> bridger
+> npx ts-node src/index.ts
+
+-------------- 1653204356869 --------------
+[WORMHOLE Bridging] asset 90650110n amount 10000000n origin algorand destination ethereum
+Sending transfer from algorand to ethereum
+7CLCLEXNPUJWNKKUVPIVVUQ6UJMDMQWBI2EXO3VBEEYXX4FPEOXA
+xfer: 37.164s
+Eth recieved from wormhole. Unwrapping & staking on Lido
+unwrap&stake transaction on ropsten {
+  type: 2,
+  chainId: 3,
+  nonce: 25,
+  maxPriorityFeePerGas: BigNumber { _hex: '0x59682f00', _isBigNumber: true },
+  maxFeePerGas: BigNumber { _hex: '0x59682f12', _isBigNumber: true },
+  gasPrice: null,
+  gasLimit: BigNumber { _hex: '0x01d8c8', _isBigNumber: true },
+  to: '0x5a09E033863f74E80973491930d067Dc3B8797Cd',
+  value: BigNumber { _hex: '0x00', _isBigNumber: true },
+  data: '0x5f92c3bf000000000000000000000000000000000000000000000000016345785d8a0000',
+  accessList: [],
+  hash: '0x37cac8f5e17786d4c2130d3e4510d2470506942b52d5aaae087553a6e33b036c',
+  v: 0,
+  r: '0x1ee9561dbf6e3df7b38a38a8ef6d87750906f7e917acecdfeeb88c94b00bfa22',
+  s: '0x32c2204b55f6e0ca732e9e8b7941288fc7578b77919d331898a8bd46e70a5077',
+  from: '0xF00ad5f9a6af4e3daBC21762144AC302a03Cb9d1',
+  confirmations: 0,
+  wait: [Function (anonymous)]
+}
+issuing st-Eth-lp tokens on Algorand to represent ownership of stEth on Ethereum
+issuing st-Eth-lp tokens on Algorand to represent ownership of stEth on Ethereum
+[stEthLp issuance] Transaction L2MD5OG5YI3LYTRPYJ6B3NJC7KMP2L6S4RTDHZOUFHQ6YL5I6TYA confirmed in round 21740517
+[stEthLp issuance] Transaction Y5ZKIV2QBQZ6WJPSETFETB473GCEYMXMVC3UMZBAFT2SDIQ22O3A confirmed in round 21740517

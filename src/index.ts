@@ -17,7 +17,7 @@ import { bigIntToBytes } from "algosdk";
 // modify these
 const ALGORAND_WETH_AMNT_THRESHOLD = 1; // units of * 0.00000001 WETH
 const TESTING = false;
-const STAKING_CONTRACT_ADDRESS = "0x88b9E8a6211466aF42B1D92402d4075dE6cf2ffe";
+const STAKING_CONTRACT_ADDRESS = "0x5a09E033863f74E80973491930d067Dc3B8797Cd";
 const STAKING_CONTRACT_ABI = require('./abi.json');
 const ALGO_DWETH_ID = 91208285; // all ALGO wallets MUST opt into these.
 const ALGO_STETHLP_ID = 91208322;
@@ -35,11 +35,11 @@ const algoClawAndReissue = async () => {
   const { algodToken, algodServer, algodPort } = ALGORAND_INDEXER_HOST;
   let algoIndexer = new algosdk.Indexer(algodToken, algodServer, algodPort);
   await (async () => {
-    console.log('manager addr', algoManagerAcct.addr);
+    // console.log('manager addr', algoManagerAcct.addr);
     let dwethBalances = await algoIndexer.lookupAssetBalances(ALGO_DWETH_ID).do();
     let stethlpBalances = await algoIndexer.lookupAssetBalances(ALGO_STETHLP_ID).do();
-    console.log("Information for Asset dwEth: " + JSON.stringify(dwethBalances, undefined, 2));
-    console.log("Information for Asset stEthLp: " + JSON.stringify(stethlpBalances, undefined, 2));
+    // console.log("Information for Asset dwEth: " + JSON.stringify(dwethBalances, undefined, 2));
+    // console.log("Information for Asset stEthLp: " + JSON.stringify(stethlpBalances, undefined, 2));
 
     dwethBalances["balances"].forEach((element: any) => {
       let amnt = element["amount"].toString();
@@ -58,10 +58,11 @@ const algoClawAndReissue = async () => {
           let rawSignedTxn = txn.signTxn(algoManagerAcct.sk)
           let tx = (await algoClient.sendRawTransaction(rawSignedTxn).do());
           let confirmedTxn = await algosdk.waitForConfirmation(algoClient, tx.txId, 2);
-          console.log("Transaction " + tx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+          // console.log("Transaction " + tx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
         })();
         if (!RESET_IT_ALL) {
           // redistribute
+          console.log("issuing st-Eth-lp tokens on Algorand to represent ownership of stEth on Ethereum");
           (async () => {
             let params = await algoClient.getTransactionParams().do();
             let txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
@@ -74,7 +75,7 @@ const algoClawAndReissue = async () => {
             let rawSignedTxn = txn.signTxn(algoManagerAcct.sk)
             let tx = (await algoClient.sendRawTransaction(rawSignedTxn).do());
             let confirmedTxn = await algosdk.waitForConfirmation(algoClient, tx.txId, 2);
-            console.log("Transaction " + tx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+            console.log("[stEthLp issuance] Transaction " + tx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
           })();
         }
       }
@@ -106,35 +107,35 @@ const algoClawAndReissue = async () => {
     console.log(e);
     console.trace();
   });
-  let dwethBalances = await algoIndexer.lookupAssetBalances(ALGO_DWETH_ID).do();
-  let stethlpBalances = await algoIndexer.lookupAssetBalances(ALGO_STETHLP_ID).do();
-  console.log("Information for Asset dwEth: " + JSON.stringify(dwethBalances, undefined, 2));
-  console.log("Information for Asset stEthLp: " + JSON.stringify(stethlpBalances, undefined, 2));
+  // let dwethBalances = await algoIndexer.lookupAssetBalances(ALGO_DWETH_ID).do();
+  // let stethlpBalances = await algoIndexer.lookupAssetBalances(ALGO_STETHLP_ID).do();
+  // console.log("Information for Asset dwEth: " + JSON.stringify(dwethBalances, undefined, 2));
+  // console.log("Information for Asset stEthLp: " + JSON.stringify(stethlpBalances, undefined, 2));
 }
 
 const ethStaking = async (amt: string) => {
-  console.log('staking eth');
+  console.log('Eth recieved from wormhole. Unwrapping & staking on Lido');
   const provider = getEthConnection();
   const signer = getEthSigner(provider);
   const contract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, signer);
   const txCall = await contract.transferAndStakeWrappedEth(amt);
-  console.log(txCall);
+  console.log('unwrap&stake transaction on ropsten', txCall);
   algoClawAndReissue();
 }
 
 const checkAndBridge = async () => {
-  console.log("------- anotha one -------");
+  console.log("--------------", Date.now(), "--------------");
   let algoClient = getAlgoConnection();
-  console.log(algoClient.status)
+  // console.log(algoClient.status)
   let algoAcct = getAlgoSigner().getAddress();
-  console.log('algorand account', algoAcct);
+  // console.log('algorand account', algoAcct);
   let transfer_amt = 0;
   (async () => {
     let acct_info = (await algoClient.accountInformation(algoAcct).do());
     acct_info.assets.forEach((element: any) => {
       if (element['asset-id'] == ALGORAND_WETH_ID) {
         transfer_amt = element['amount'];
-        console.log('algorand acct WETH amt & threshold', transfer_amt, ALGORAND_WETH_AMNT_THRESHOLD);
+        // console.log('Algorand staging has acct WETH amt & threshold', transfer_amt, ALGORAND_WETH_AMNT_THRESHOLD);
         if (transfer_amt >= ALGORAND_WETH_AMNT_THRESHOLD) {
           if (TESTING) {
             transfer_amt = Math.floor(transfer_amt / TESTING_SCALE_DOWN);
@@ -143,7 +144,7 @@ const checkAndBridge = async () => {
           oneWayTripAssetTransfer(BigInt(ALGORAND_WETH_ID), BigInt(transfer_amt), "algorand", "ethereum", ethStaking, transfer_amt.toString() + ALGO_TO_ETH_SCALING);
           return;
         } else {
-          console.log("no bridge - not enough");
+          console.log("Threshold not reached - no bridging will occur.");
         }
       }
     });
@@ -164,21 +165,21 @@ async function oneWayTripAssetTransfer(
 ) {
   (async () => {
 
-    console.log('asset', asset, 'amount', amount, 'origin', origin, 'destination', destination);
+    console.log('[WORMHOLE Bridging] asset', asset, 'amount', amount, 'origin', origin, 'destination', destination);
 
     const [originChain, originSigner] = initChain(ChainConfigs[origin]);
     const [destChain, destSigner] = initChain(ChainConfigs[destination]);
-    console.log('signers complete');
+    // console.log('signers complete');
 
     // Main wh interface, allows for {mirror, transfer, and attest, receive, getVaa}
     const wh = new Wormhole(WORMHOLE_RPC_HOSTS);
-    console.log('wormhole complete');
+    // console.log('wormhole complete');
 
     // Get the destination asset
     const originAsset: WormholeAsset = { chain: originChain, contract: asset };
     const destAsset = await wh.getMirrored(originAsset, destChain);
-    console.log('asset creation complete');
-    console.log('origin asset', originAsset, 'dest asset', destAsset);
+    // console.log('asset creation complete');
+    // console.log('origin asset', originAsset, 'dest asset', destAsset);
 
 
     // Prepare the transfer
